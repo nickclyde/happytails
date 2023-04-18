@@ -32,24 +32,26 @@ async function reformatDogApp(req: NextApiRequest, res: NextApiResponse) {
   await runMiddleware(req, res, cors)
   
   let response;
-  console.log(req.body)
-  // try {
-  //   response = await sendgrid.send({
-  //     to: 'tnelson@frewdev.com',
-  //     from: 'nick@clyde.tech',
-  //     subject: 'New message from Westdale Website',
-  //     html: `${req.body.name} sent a message:
-  //     <br /><br />
-  //     ${req.body.message}
-  //     <br /><br />
-  //     Email address provided: <a href="mailto:${req.body.email}" target="_blank">${req.body.email}</a><br />
-  //     Phone number provided: ${req.body.phone}`,
-  //   });
-  // } catch (error: any) {
-  //   return res.status(error.statusCode || 500).json({ error: error.message });
-  // }
+  const data = req.body;
+  const formattedData = Object.entries(data)
+    .map(([key, value]) => `<b>${key.replace(/-/g, ' ').replace(/_/g, ' ')}:</b> ${value}`)
+    .join('<br />');
 
-  return res.status(200).json("logged");
+  try {
+    response = await sendgrid.send({
+      to: 'nick@clyde.tech',
+      from: 'nick@clyde.tech',
+      replyTo: data.Email,
+      subject: `New dog application from ${data.name} for ${data['Name-of-dog-interested-in-adopting']}`,
+      html: `${data.name} applied to adopt ${data['Name-of-dog-interested-in-adopting']}:
+      <br /><br />
+      ${formattedData}`,
+    });
+  } catch (error: any) {
+    return res.status(error.statusCode || 500).json({ error: error.message });
+  }
+
+  return res.status(200).json(response);
 }
 
 export default reformatDogApp;
