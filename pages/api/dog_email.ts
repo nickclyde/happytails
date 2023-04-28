@@ -48,7 +48,7 @@ async function reformatDogApp(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     response = await sendgrid.send({
-      to: 'nick@clyde.tech',
+      to: 'dogs@happytails.org',
       from: 'nick@clyde.tech',
       replyTo: data.Email,
       subject: `${data['Name-of-dog-interested-in-adopting']} - Adoption Application from ${data.name}`,
