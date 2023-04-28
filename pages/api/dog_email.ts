@@ -38,7 +38,12 @@ async function reformatDogApp(req: NextApiRequest, res: NextApiResponse) {
   let response;
   const data = req.body;
   const formattedData = Object.entries(data)
-    .map(([key, value]) => `<b>${capitalizeFirstLetter(key).replace(/-/g, ' ').replace(/_/g, ' ')}:</b><br />${value}<br />`)
+    .map(([key, value]) => {
+      if (value == 'on') {
+        value = 'Yes';
+      }
+      return `<b>${capitalizeFirstLetter(key).replace(/-/g, ' ').replace(/_/g, ' ')}:</b><br />${value}<br />`
+    })
     .join('<br />');
 
   try {
