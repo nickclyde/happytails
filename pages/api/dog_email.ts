@@ -27,6 +27,10 @@ function runMiddleware(
   })
 }
 
+function capitalizeFirstLetter(string: string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 async function reformatDogApp(req: NextApiRequest, res: NextApiResponse) {
   // Run the middleware
   await runMiddleware(req, res, cors)
@@ -34,7 +38,7 @@ async function reformatDogApp(req: NextApiRequest, res: NextApiResponse) {
   let response;
   const data = req.body;
   const formattedData = Object.entries(data)
-    .map(([key, value]) => `<b>${key.replace(/-/g, ' ').replace(/_/g, ' ')}:</b> ${value}`)
+    .map(([key, value]) => `<b>${capitalizeFirstLetter(key).replace(/-/g, ' ').replace(/_/g, ' ')}:</b><br />${value}<br />`)
     .join('<br />');
 
   try {
@@ -42,7 +46,7 @@ async function reformatDogApp(req: NextApiRequest, res: NextApiResponse) {
       to: 'nick@clyde.tech',
       from: 'nick@clyde.tech',
       replyTo: data.Email,
-      subject: `New dog application from ${data.name} for ${data['Name-of-dog-interested-in-adopting']}`,
+      subject: `${data['Name-of-dog-interested-in-adopting']} - Adoption Application from ${data.name}`,
       html: `${data.name} applied to adopt ${data['Name-of-dog-interested-in-adopting']}:
       <br /><br />
       ${formattedData}`,
