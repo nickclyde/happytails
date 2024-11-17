@@ -1,14 +1,20 @@
 package jotform
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 )
+
+func ConvertMapToValues(data map[string]string) url.Values {
+	values := url.Values{}
+	for key, value := range data {
+		values.Set(key, value)
+	}
+	return values
+}
 
 func loginAndGetSessionID(loginURL, databaseID, username, password string) (string, error) {
 	client := &http.Client{}
@@ -31,7 +37,7 @@ func loginAndGetSessionID(loginURL, databaseID, username, password string) (stri
 
 	// Extract session cookie
 	for _, cookie := range resp.Cookies() {
-		if cookie.Name == "session_id" { // Adjust to match actual cookie name
+		if cookie.Name == "asm_session_id" { // Adjust to match actual cookie name
 			return cookie.Value, nil
 		}
 	}
@@ -40,16 +46,13 @@ func loginAndGetSessionID(loginURL, databaseID, username, password string) (stri
 
 func createPerson(apiURL, sessionID string, personData map[string]string) error {
 	client := &http.Client{}
-	jsonData, err := json.Marshal(personData)
-	if err != nil {
-		return err
-	}
+	data := ConvertMapToValues(personData)
 
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", apiURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return err
 	}
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Cookie", fmt.Sprintf("asm_session_id=%s", sessionID))
 
 	resp, err := client.Do(req)
