@@ -80,6 +80,12 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Error:\n\n%s", err)
 	}
 
+	r.ParseForm()
+
+	rawRequest := r.FormValue("rawRequest")
+	fmt.Fprintf(w, "RAW REQUEST: %s", rawRequest)
+	fmt.Printf("RAW REQUEST: %s", rawRequest)
+
 	newPersonURL := baseURL + "/person_new"
 	personData := map[string]string{
 		"ownertype":        "1",
