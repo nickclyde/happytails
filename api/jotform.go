@@ -83,8 +83,8 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 
-	rawRequest := r.FormValue("rawRequest")
-	log.Printf("RAW REQUEST: %s", rawRequest)
+	// rawRequest := r.FormValue("rawRequest")
+	log.Printf("RAW REQUEST: %s", r.PostForm)
 
 	newPersonURL := baseURL + "/person_new"
 	personData := map[string]string{
