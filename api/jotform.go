@@ -2,6 +2,7 @@ package jotform
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -83,8 +84,7 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	rawRequest := r.FormValue("rawRequest")
-	fmt.Fprintf(w, "RAW REQUEST: %s", rawRequest)
-	fmt.Printf("RAW REQUEST: %s", rawRequest)
+	log.Printf("RAW REQUEST: %s", rawRequest)
 
 	newPersonURL := baseURL + "/person_new"
 	personData := map[string]string{
