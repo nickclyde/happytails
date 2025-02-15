@@ -37,9 +37,8 @@ func loginAndGetSessionID(loginURL, databaseID, username, password string) (stri
 	}
 	defer resp.Body.Close()
 
-	// Extract session cookie
 	for _, cookie := range resp.Cookies() {
-		if cookie.Name == "asm_session_id" { // Adjust to match actual cookie name
+		if cookie.Name == "asm_session_id" {
 			return cookie.Value, nil
 		}
 	}
@@ -70,28 +69,24 @@ func createPerson(apiURL, sessionID string, personData map[string]string) error 
 }
 
 func Jotform(w http.ResponseWriter, r *http.Request) {
-	// ShelterManager credentials
 	baseURL := "https://us03d.sheltermanager.com"
 	loginURL := baseURL + "/login"
 	databaseID := os.Getenv("SHELTER_MANAGER_DATABASE_ID")
 	username := os.Getenv("SHELTER_MANAGER_USERNAME")
 	password := os.Getenv("SHELTER_MANAGER_PASSWORD")
 
-	// Authenticate and get session ID
 	sessionID, err := loginAndGetSessionID(loginURL, databaseID, username, password)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Parse incoming webhook form data
-	err = r.ParseMultipartForm(32 << 20) // Max memory 32MB
+	err = r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
 		return
 	}
 
-	// Extract rawRequest JSON field
 	rawRequest := r.FormValue("rawRequest")
 	if rawRequest == "" {
 		http.Error(w, "rawRequest field is missing", http.StatusBadRequest)
@@ -106,28 +101,32 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 
 	// Transform incoming request data to ShelterManager format
 	personData := map[string]string{
-		"ownertype":        "1",
-		"title":            "Mr.", // Default title, adjust if needed
-		"initials":         fmt.Sprintf("%c%c%c", requestData["q3_fullName3"].(map[string]interface{})["first"].(string)[0], requestData["q3_fullName3"].(map[string]interface{})["last"].(string)[0], 'T'),
-		"forenames":        requestData["q3_fullName3"].(map[string]interface{})["first"].(string),
-		"surname":          requestData["q3_fullName3"].(map[string]interface{})["last"].(string),
-		"address":          url.QueryEscape(requestData["q4_address4"].(map[string]interface{})["addr_line1"].(string)),
-		"town":             requestData["q4_address4"].(map[string]interface{})["city"].(string),
-		"county":           requestData["q4_address4"].(map[string]interface{})["state"].(string),
-		"postcode":         requestData["q4_address4"].(map[string]interface{})["postal"].(string),
-		"country":          "USA",
-		"hometelephone":    requestData["q88_phoneNumber"].(map[string]interface{})["full"].(string),
-		"emailaddress":     requestData["q6_email6"].(string),
-		"dateofbirth":      fmt.Sprintf("%s/%s/%s", requestData["q35_dob"].(map[string]interface{})["month"], requestData["q35_dob"].(map[string]interface{})["day"], requestData["q35_dob"].(map[string]interface{})["year"]),
-		"idnumber":         "A12345", // Static placeholder, replace if ID available
+		"ownertype": "1",
+		"title":     "Mr.", // Default title, adjust if needed
+		"forenames": requestData["q3_fullName3"].(map[string]interface{})["first"].(string),
+		"surname":   requestData["q3_fullName3"].(map[string]interface{})["last"].(string),
+		// Using strings.Replace to handle spaces in address properly
+		"address":       strings.Replace(requestData["q4_address4"].(map[string]interface{})["addr_line1"].(string), "+", " ", -1),
+		"town":          requestData["q4_address4"].(map[string]interface{})["city"].(string),
+		"county":        requestData["q4_address4"].(map[string]interface{})["state"].(string),
+		"postcode":      requestData["q4_address4"].(map[string]interface{})["postal"].(string),
+		"country":       "USA",
+		"hometelephone": requestData["q88_phoneNumber"].(map[string]interface{})["full"].(string),
+		"emailaddress":  requestData["q6_email6"].(string),
+		"dateofbirth":   fmt.Sprintf("%s/%s/%s", requestData["q35_dob"].(map[string]interface{})["month"], requestData["q35_dob"].(map[string]interface{})["day"], requestData["q35_dob"].(map[string]interface{})["year"]),
+		// Removed idnumber field as it should come from the form
 		"jurisdiction":     "1",
 		"flags":            "adopter",
 		"gdprcontactoptin": "",
 		"site":             "0",
-		"a.1.7":            "No", // Static placeholder
+		"a.1.7":            "No",
 	}
 
-	// Submit the transformed data to ShelterManager
+	// Map the ID from q86_typeA86 field
+	if id, ok := requestData["q86_typeA86"].(string); ok && id != "" {
+		personData["idnumber"] = id
+	}
+
 	newPersonURL := baseURL + "/person_new"
 	if err := createPerson(newPersonURL, sessionID, personData); err != nil {
 		http.Error(w, fmt.Sprintf("Error creating person: %s", err), http.StatusInternalServerError)
