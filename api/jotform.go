@@ -68,6 +68,39 @@ func createPerson(apiURL, sessionID string, personData map[string]string) error 
 	return nil
 }
 
+// Helper function to safely extract string from interface{}
+func getString(data interface{}) string {
+	if data == nil {
+		return ""
+	}
+	if str, ok := data.(string); ok {
+		return str
+	}
+	return ""
+}
+
+// Helper function to safely extract nested string from map
+func getNestedString(data map[string]interface{}, keys ...string) string {
+	current := data
+	for i, key := range keys {
+		if val, ok := current[key]; ok {
+			if i == len(keys)-1 {
+				// Last key, expect string
+				return getString(val)
+			}
+			// Not last key, expect map
+			if nextMap, ok := val.(map[string]interface{}); ok {
+				current = nextMap
+			} else {
+				return ""
+			}
+		} else {
+			return ""
+		}
+	}
+	return ""
+}
+
 func Jotform(w http.ResponseWriter, r *http.Request) {
 	baseURL := "https://us03d.sheltermanager.com"
 	loginURL := baseURL + "/login"
@@ -99,21 +132,21 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Transform incoming request data to ShelterManager format
+	// Log the incoming data for debugging
+	log.Printf("Incoming request data: %+v", requestData)
+
+	// Transform incoming request data to ShelterManager format with safe extraction
 	personData := map[string]string{
-		"ownertype": "1",
-		"forenames": requestData["q3_fullName3"].(map[string]interface{})["first"].(string),
-		"surname":   requestData["q3_fullName3"].(map[string]interface{})["last"].(string),
-		// Using strings.Replace to handle spaces in address properly
-		"address":       strings.Replace(requestData["q4_address4"].(map[string]interface{})["addr_line1"].(string), "+", " ", -1),
-		"town":          requestData["q4_address4"].(map[string]interface{})["city"].(string),
-		"county":        requestData["q4_address4"].(map[string]interface{})["state"].(string),
-		"postcode":      requestData["q4_address4"].(map[string]interface{})["postal"].(string),
-		"country":       "USA",
-		"hometelephone": requestData["q88_phoneNumber"].(map[string]interface{})["full"].(string),
-		"emailaddress":  requestData["q6_email6"].(string),
-		"dateofbirth":   fmt.Sprintf("%s/%s/%s", requestData["q35_dob"].(map[string]interface{})["month"], requestData["q35_dob"].(map[string]interface{})["day"], requestData["q35_dob"].(map[string]interface{})["year"]),
-		// Removed idnumber field as it should come from the form
+		"ownertype":        "1",
+		"forenames":        getNestedString(requestData, "q3_fullName3", "first"),
+		"surname":          getNestedString(requestData, "q3_fullName3", "last"),
+		"address":          strings.Replace(getNestedString(requestData, "q4_address4", "addr_line1"), "+", " ", -1),
+		"town":             getNestedString(requestData, "q4_address4", "city"),
+		"county":           getNestedString(requestData, "q4_address4", "state"),
+		"postcode":         getNestedString(requestData, "q4_address4", "postal"),
+		"country":          "USA",
+		"hometelephone":    getNestedString(requestData, "q88_mobilePhone", "full"), // Fixed field name
+		"emailaddress":     getString(requestData["q6_email6"]),
 		"jurisdiction":     "1",
 		"flags":            "adopter",
 		"gdprcontactoptin": "",
@@ -121,10 +154,26 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 		"a.1.7":            "No",
 	}
 
+	// Handle date of birth - fixed field name from q35_dob to q35_dateOf
+	month := getNestedString(requestData, "q35_dateOf", "month")
+	day := getNestedString(requestData, "q35_dateOf", "day")
+	year := getNestedString(requestData, "q35_dateOf", "year")
+	if month != "" && day != "" && year != "" {
+		personData["dateofbirth"] = fmt.Sprintf("%s/%s/%s", month, day, year)
+	}
+
 	// Map the ID from q86_typeA86 field
-	if id, ok := requestData["q86_typeA86"].(string); ok && id != "" {
+	if id := getString(requestData["q86_typeA86"]); id != "" {
 		personData["idnumber"] = id
 	}
+
+	// If mobile phone is empty, try the secondary phone number field
+	if personData["hometelephone"] == "" {
+		personData["hometelephone"] = getNestedString(requestData, "q116_phoneNumber116", "full")
+	}
+
+	// Log the transformed data
+	log.Printf("Transformed person data: %+v", personData)
 
 	newPersonURL := baseURL + "/person_new"
 	if err := createPerson(newPersonURL, sessionID, personData); err != nil {
@@ -133,5 +182,4 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprint(w, "Person created successfully!")
-	log.Printf("Transformed Request: %+v", personData)
 }
