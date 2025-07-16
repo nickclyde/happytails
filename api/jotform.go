@@ -102,7 +102,6 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 	// Transform incoming request data to ShelterManager format
 	personData := map[string]string{
 		"ownertype": "1",
-		"title":     "Mr.", // Default title, adjust if needed
 		"forenames": requestData["q3_fullName3"].(map[string]interface{})["first"].(string),
 		"surname":   requestData["q3_fullName3"].(map[string]interface{})["last"].(string),
 		// Using strings.Replace to handle spaces in address properly
