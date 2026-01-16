@@ -135,12 +135,26 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 	// Log the incoming data for debugging
 	log.Printf("Incoming request data: %+v", requestData)
 
+	// Parse address lines
+	addrLine1 := strings.Replace(getNestedString(requestData, "q4_address4", "addr_line1"), "+", " ", -1)
+	addrLine2 := strings.Replace(getNestedString(requestData, "q4_address4", "addr_line2"), "+", " ", -1)
+
+	// Combine address lines
+	fullAddress := addrLine1
+	if addrLine2 != "" {
+		if fullAddress != "" {
+			fullAddress += ", " + addrLine2
+		} else {
+			fullAddress = addrLine2
+		}
+	}
+
 	// Transform incoming request data to ShelterManager format with safe extraction
 	personData := map[string]string{
 		"ownertype":        "1",
 		"forenames":        getNestedString(requestData, "q3_fullName3", "first"),
 		"surname":          getNestedString(requestData, "q3_fullName3", "last"),
-		"address":          strings.Replace(getNestedString(requestData, "q4_address4", "addr_line1"), "+", " ", -1),
+		"address":          fullAddress,
 		"town":             getNestedString(requestData, "q4_address4", "city"),
 		"county":           getNestedString(requestData, "q4_address4", "state"),
 		"postcode":         getNestedString(requestData, "q4_address4", "postal"),
