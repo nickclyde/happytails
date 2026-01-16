@@ -142,7 +142,7 @@ func Jotform(w http.ResponseWriter, r *http.Request) {
 	// Combine address lines
 	fullAddress := addrLine1
 	if addrLine2 != "" {
-		if fullAddress != "" {
+		if addrLine1 != "" {
 			fullAddress += ", " + addrLine2
 		} else {
 			fullAddress = addrLine2
